@@ -11,7 +11,7 @@ async function seed() {
     .values([
       { title: 'Acordar cedo', desiredWeeklyFrequency: 6 },
       { title: 'Me exercitar', desiredWeeklyFrequency: 6 },
-      { title: 'Meditar', desiredWeeklyFrequency: 2 },
+      { title: 'Meditar', desiredWeeklyFrequency: 1 },
     ])
     .returning()
 

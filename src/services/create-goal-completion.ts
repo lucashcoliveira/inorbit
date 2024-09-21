@@ -11,19 +11,23 @@ export async function createGoalCompletion({
   goalId,
 }: CreateGoalCompletionRequest) {
   const firstDayOfWeek = dayjs().startOf('week').toDate()
-  const lastDayofWeek = dayjs().endOf('week').toDate()
+  const lastDayOfWeek = dayjs().endOf('week').toDate()
+
+  console.log('goalId:', goalId)
+  console.log('firstDayOfWeek:', firstDayOfWeek)
+  console.log('lastDayOfWeek:', lastDayOfWeek)
 
   const goalCompletionCounts = db.$with('goal_completion_count').as(
     db
       .select({
         goalId: goalCompletions.goalId,
-        completionCount: count(goalCompletions.id).as('completoinCount'),
+        completionCount: count(goalCompletions.id).as('completionCount'),
       })
       .from(goalCompletions)
       .where(
         and(
           gte(goalCompletions.createdAt, firstDayOfWeek),
-          lte(goalCompletions.createdAt, lastDayofWeek),
+          lte(goalCompletions.createdAt, lastDayOfWeek),
           eq(goalCompletions.goalId, goalId)
         )
       )
@@ -43,7 +47,13 @@ export async function createGoalCompletion({
     .where(eq(goals.id, goalId))
     .limit(1)
 
-  const { completionCount, desiredWeeklyFrequency } = result[0]
+  console.log('Result:', result)
+
+  if (!result || result.length === 0) {
+    throw new Error('No goal found or no completions this week.')
+  }
+
+  const { completionCount = 0, desiredWeeklyFrequency } = result[0]
 
   if (completionCount >= desiredWeeklyFrequency) {
     throw new Error('Goal already completed this week!')

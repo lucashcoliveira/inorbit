@@ -1,9 +1,9 @@
 import dayjs from 'dayjs'
 import { db } from '../db'
 import { goalCompletions, goals } from '../db/schema'
-import { and, count, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gte, lte, sql } from 'drizzle-orm'
 
-export async function getWeekSumary() {
+export async function getWeekSummary() {
   const firstDayOfWeek = dayjs().startOf('week').toDate()
   const lastDayofWeek = dayjs().endOf('week').toDate()
 
@@ -37,6 +37,7 @@ export async function getWeekSumary() {
           lte(goalCompletions.createdAt, lastDayofWeek)
         )
       )
+      .orderBy(desc(goalCompletions.createdAt))
   )
 
   const goalsCompletedByWeekDay = db.$with('goals_completed_by_week_day').as(
@@ -48,14 +49,24 @@ export async function getWeekSumary() {
           JSON_BUILD_OBJECT(
             'id', ${goalsCompletedInWeek.id},
             'title', ${goalsCompletedInWeek.title},
-            'completedAdDate', ${goalsCompletedInWeek.completedAtDate}
+            'completedAt', ${goalsCompletedInWeek.completedAt}
           )
         )
       `.as('completions'),
       })
       .from(goalsCompletedInWeek)
       .groupBy(goalsCompletedInWeek.completedAtDate)
+      .orderBy(desc(goalsCompletedInWeek.completedAtDate))
   )
+
+  type GoalsPerDay = Record<
+    string,
+    {
+      id: string
+      title: string
+      completedAt: string
+    }[]
+  >
 
   const result = await db
     .with(goalsCreatedUpToWeek, goalsCompletedInWeek, goalsCompletedByWeekDay)
@@ -68,7 +79,7 @@ export async function getWeekSumary() {
         sql /*sql*/`(SELECT SUM(${goalsCreatedUpToWeek.desiredWeeklyFrequency}) FROM ${goalsCreatedUpToWeek})`.mapWith(
           Number
         ),
-      golasPerDay: sql /*slq*/`
+      goalsPerDay: sql /*slq*/<GoalsPerDay>`
         JSON_OBJECT_AGG(
         ${goalsCompletedByWeekDay.completedAtDate},
         ${goalsCompletedByWeekDay.completions}
@@ -78,6 +89,6 @@ export async function getWeekSumary() {
     .from(goalsCompletedByWeekDay)
 
   return {
-    sumary: result,
+    summary: result[0],
   }
 }
